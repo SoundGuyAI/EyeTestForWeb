@@ -31,7 +31,35 @@ All production output will be static HTML, JavaScript, CSS, WebAssembly, and mod
 
 ## Current status
 
-Planning and architecture. No application code has been implemented yet.
+Phase 1 prototype implementation. The app opens the front camera, loads MediaPipe Face Landmarker,
+tracks one face, visualizes landmarks, and exposes raw left/right eye-blink signals plus basic
+position and performance diagnostics.
+
+## Run locally
+
+Requirements: Node.js 22 or newer and npm.
+
+```bash
+npm install
+npm run dev
+```
+
+Useful verification commands:
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+Camera access requires `localhost` during development or HTTPS in production.
+
+## Prototype asset loading
+
+The first prototype imports application code from the pinned `@mediapipe/tasks-vision` npm package.
+At runtime it downloads the matching MediaPipe WebAssembly files from jsDelivr and the official
+Face Landmarker model from Google-hosted storage. Future hardening will copy these assets into the
+GitHub Pages build so the application can operate without runtime CDN dependencies.
 
 ## Important limitation
 
