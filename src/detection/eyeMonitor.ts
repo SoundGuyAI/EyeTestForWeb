@@ -93,7 +93,11 @@ export class EyeMonitor {
     } else {
       if (this.bothClosedSinceMs !== null) {
         const completedDuration = observation.timestampMs - this.bothClosedSinceMs
-        if (completedDuration >= this.minimumBlinkMs && completedDuration < this.alertDelayMs) {
+        if (
+          !this.currentClosureCounted &&
+          completedDuration >= this.minimumBlinkMs &&
+          completedDuration < this.alertDelayMs
+        ) {
           this.blinkCount += 1
         }
       }

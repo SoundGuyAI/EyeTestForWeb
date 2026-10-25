@@ -222,6 +222,7 @@ function EyeMonitorApp() {
         soundEnabledRef.current = false
       }
     }
+    if (generation !== sessionGenerationRef.current) return
 
     try {
       const stream = await requestFrontCamera()
