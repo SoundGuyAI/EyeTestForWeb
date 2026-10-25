@@ -31,9 +31,20 @@ All production output will be static HTML, JavaScript, CSS, WebAssembly, and mod
 
 ## Current status
 
-Phase 1 prototype implementation. The app opens the front camera, loads MediaPipe Face Landmarker,
-tracks one face, visualizes landmarks, and exposes raw left/right eye-blink signals plus basic
-position and performance diagnostics.
+Eye-monitoring MVP implementation. The app opens the front camera, loads MediaPipe Face Landmarker,
+calibrates personalized eye thresholds, smooths noisy signals, distinguishes blinks, one-eye closures,
+and sustained bilateral closure, and provides configurable visual and sound alerts. Camera frames and
+derived signals remain in the browser.
+
+Current features include:
+
+- Guided three-step calibration with a default-threshold fallback
+- Time-based filtering, hysteresis, blink counting, and sustained-closure detection
+- Configurable 0.5–3 second alert delay
+- Optional Web Audio alert initialized from a user gesture
+- Preview hiding without stopping local detection
+- Recalibration, signal-quality guidance, and developer diagnostics
+- Responsive mobile-first monitoring UI
 
 ## Run locally
 

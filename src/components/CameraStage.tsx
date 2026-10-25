@@ -1,13 +1,34 @@
 import { useEffect, useRef } from 'react'
-import type { FaceObservation } from '../detection/types'
+import type { EyeState, FaceObservation } from '../detection/types'
 
 interface CameraStageProps {
   videoRef: React.RefObject<HTMLVideoElement | null>
   observation: FaceObservation | null
   active: boolean
+  showPreview?: boolean
+  mode?: 'idle' | 'calibrating' | 'monitoring'
+  eyeState?: EyeState
+  alerting?: boolean
 }
 
-export function CameraStage({ videoRef, observation, active }: CameraStageProps) {
+const cameraStateLabel: Record<EyeState, string> = {
+  unavailable: 'Signal unavailable',
+  open: 'Eyes open',
+  blinking: 'Blinking',
+  'left-closed': 'Left eye closed',
+  'right-closed': 'Right eye closed',
+  closed: 'Eyes closed',
+}
+
+export function CameraStage({
+  videoRef,
+  observation,
+  active,
+  showPreview = true,
+  mode = 'idle',
+  eyeState = 'unavailable',
+  alerting = false,
+}: CameraStageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -45,10 +66,20 @@ export function CameraStage({ videoRef, observation, active }: CameraStageProps)
   }, [active, observation, videoRef])
 
   return (
-    <section className="camera-shell" aria-label="Camera preview">
+    <section className={`camera-shell ${alerting ? 'camera-alerting' : ''}`} aria-label="Camera preview">
       <div className="camera-frame">
-        <video ref={videoRef} className="camera-media mirrored" muted playsInline autoPlay />
-        <canvas ref={canvasRef} className="camera-media camera-overlay mirrored" aria-hidden="true" />
+        <video
+          ref={videoRef}
+          className={`camera-media mirrored ${showPreview ? '' : 'preview-hidden'}`}
+          muted
+          playsInline
+          autoPlay
+        />
+        <canvas
+          ref={canvasRef}
+          className={`camera-media camera-overlay mirrored ${showPreview ? '' : 'preview-hidden'}`}
+          aria-hidden="true"
+        />
         {!active && (
           <div className="camera-placeholder">
             <div className="face-guide" aria-hidden="true" />
@@ -56,6 +87,21 @@ export function CameraStage({ videoRef, observation, active }: CameraStageProps)
           </div>
         )}
         {active && <div className="framing-guide" aria-hidden="true" />}
+        {mode === 'calibrating' && (
+          <div className="camera-status-badge calibration-badge">Calibrating</div>
+        )}
+        {mode === 'monitoring' && (
+          <div className={`camera-status-badge eye-state-${eyeState}`}>
+            <span aria-hidden="true" />
+            {cameraStateLabel[eyeState]}
+          </div>
+        )}
+        {active && !showPreview && (
+          <div className="preview-off-message">
+            <span className="privacy-icon" aria-hidden="true">●</span>
+            Camera preview hidden. On-device monitoring continues.
+          </div>
+        )}
       </div>
       <p className="camera-caption">Video remains on this device. This prototype does not record or upload frames.</p>
     </section>
