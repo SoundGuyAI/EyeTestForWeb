@@ -80,4 +80,28 @@ describe('EyeMonitor', () => {
     engine.setAlertDelay(300)
     expect(engine.update(observation(550, 0.9, 0.9)).state).toBe('closed')
   })
+
+  it('does not treat an unobserved time gap as continuous closure', () => {
+    const engine = monitor(1000)
+    engine.update(observation(0, 0.9, 0.9))
+    const afterGap = engine.update(observation(5000, 0.9, 0.9))
+
+    expect(afterGap.state).not.toBe('closed')
+    expect(afterGap.alerting).toBe(false)
+    expect(afterGap.sustainedClosureCount).toBe(0)
+  })
+
+  it('counts an uninterrupted closure once when the alert delay changes', () => {
+    const engine = monitor(400)
+    engine.update(observation(0, 0.05, 0.05))
+    engine.update(observation(100, 0.9, 0.9))
+    const firstAlert = engine.update(observation(520, 0.9, 0.9))
+    engine.setAlertDelay(2000)
+    const afterChange = engine.update(observation(700, 0.9, 0.9))
+
+    expect(firstAlert.alertStarted).toBe(true)
+    expect(afterChange.state).toBe('closed')
+    expect(afterChange.alertStarted).toBe(false)
+    expect(afterChange.sustainedClosureCount).toBe(1)
+  })
 })

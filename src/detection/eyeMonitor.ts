@@ -23,6 +23,7 @@ export class EyeMonitor {
   private leftClosed = false
   private rightClosed = false
   private bothClosedSinceMs: number | null = null
+  private currentClosureCounted = false
   private previousState: EyeState = 'unavailable'
   private blinkCount = 0
   private sustainedClosureCount = 0
@@ -49,7 +50,9 @@ export class EyeMonitor {
 
     const elapsed =
       this.lastTimestampMs === null ? 0 : observation.timestampMs - this.lastTimestampMs
-    const resetSmoothing = this.lastTimestampMs === null || elapsed <= 0 || elapsed > this.maximumGapMs
+    const gapExceeded = this.lastTimestampMs !== null && (elapsed <= 0 || elapsed > this.maximumGapMs)
+    const resetSmoothing = this.lastTimestampMs === null || gapExceeded
+    if (gapExceeded) this.clearClosureTracking()
     this.lastTimestampMs = observation.timestampMs
 
     if (resetSmoothing) {
@@ -82,7 +85,7 @@ export class EyeMonitor {
       this.bothClosedSinceMs ??= observation.timestampMs
       closureDurationMs = observation.timestampMs - this.bothClosedSinceMs
       nextState =
-        closureDurationMs >= this.alertDelayMs
+        this.currentClosureCounted || closureDurationMs >= this.alertDelayMs
           ? 'closed'
           : closureDurationMs >= this.minimumBlinkMs
             ? 'blinking'
@@ -95,14 +98,18 @@ export class EyeMonitor {
         }
       }
       this.bothClosedSinceMs = null
+      this.currentClosureCounted = false
       nextState = this.leftClosed ? 'left-closed' : this.rightClosed ? 'right-closed' : 'open'
     }
 
-    if (nextState === 'closed' && this.previousState !== 'closed') {
+    let alertStarted = false
+    if (nextState === 'closed' && !this.currentClosureCounted) {
+      this.currentClosureCounted = true
       this.sustainedClosureCount += 1
+      alertStarted = true
     }
 
-    return this.output(nextState, closureDurationMs)
+    return this.output(nextState, closureDurationMs, alertStarted)
   }
 
   private applyHysteresis(
@@ -116,14 +123,18 @@ export class EyeMonitor {
 
   private resetTransientState() {
     this.lastTimestampMs = null
+    this.clearClosureTracking()
+  }
+
+  private clearClosureTracking() {
     this.leftClosed = false
     this.rightClosed = false
     this.bothClosedSinceMs = null
+    this.currentClosureCounted = false
   }
 
-  private output(state: EyeState, closureDurationMs: number): EyeMonitorOutput {
+  private output(state: EyeState, closureDurationMs: number, alertStarted = false): EyeMonitorOutput {
     const stateChanged = state !== this.previousState
-    const alertStarted = state === 'closed' && this.previousState !== 'closed'
     this.previousState = state
 
     return {
