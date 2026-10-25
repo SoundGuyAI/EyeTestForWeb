@@ -126,3 +126,19 @@ The state machine should accept recorded observation sequences without requiring
 - Reopening immediately before the alert threshold
 
 Live tests should record derived numeric observations only when the tester opts in. Raw video is not required for routine automated tests.
+
+## 11. Current MVP implementation
+
+The browser implementation now includes:
+
+- A positioning hold followed by a time-based eyes-open baseline
+- Three-blink calibration with personalized open and close thresholds
+- A default-threshold fallback when calibration cannot be completed
+- Exponential time-based smoothing
+- Separate open and close thresholds for hysteresis
+- Independent left/right eye state
+- Timestamp-based blink and sustained-closure timing
+- Reset to unavailable whenever face signal quality is not usable
+- Runtime adjustment of the sustained-closure alert delay
+
+Thresholds and timing remain subject to physical-device validation across representative users and conditions.

@@ -1,4 +1,9 @@
-import type { FaceObservation, SignalQuality } from '../detection/types'
+import type {
+  CalibrationProfile,
+  EyeMonitorOutput,
+  FaceObservation,
+  SignalQuality,
+} from '../detection/types'
 
 const qualityCopy: Record<SignalQuality, { title: string; guidance: string }> = {
   waiting: { title: 'Waiting for signal', guidance: 'Start the camera and look toward the screen.' },
@@ -25,9 +30,17 @@ interface DiagnosticsProps {
   observation: FaceObservation | null
   delegate: 'GPU' | 'CPU' | null
   detectorStatus: string
+  monitorOutput?: EyeMonitorOutput | null
+  profile?: CalibrationProfile | null
 }
 
-export function Diagnostics({ observation, delegate, detectorStatus }: DiagnosticsProps) {
+export function Diagnostics({
+  observation,
+  delegate,
+  detectorStatus,
+  monitorOutput = null,
+  profile = null,
+}: DiagnosticsProps) {
   const quality = observation?.quality ?? 'waiting'
   const copy = qualityCopy[quality]
 
@@ -45,6 +58,12 @@ export function Diagnostics({ observation, delegate, detectorStatus }: Diagnosti
       <div className="scores">
         <Score label="Left eye blink signal" value={observation?.leftBlink ?? 0} />
         <Score label="Right eye blink signal" value={observation?.rightBlink ?? 0} />
+        {monitorOutput && (
+          <>
+            <Score label="Smoothed left signal" value={monitorOutput.smoothedLeft} />
+            <Score label="Smoothed right signal" value={monitorOutput.smoothedRight} />
+          </>
+        )}
       </div>
 
       <dl className="metrics">
@@ -71,6 +90,14 @@ export function Diagnostics({ observation, delegate, detectorStatus }: Diagnosti
         <div>
           <dt>Sample time</dt>
           <dd>{observation ? `${Math.round(observation.timestampMs)} ms` : '—'}</dd>
+        </div>
+        <div>
+          <dt>Left thresholds</dt>
+          <dd>{profile ? `${profile.openThresholdLeft.toFixed(2)} / ${profile.closeThresholdLeft.toFixed(2)}` : '—'}</dd>
+        </div>
+        <div>
+          <dt>Right thresholds</dt>
+          <dd>{profile ? `${profile.openThresholdRight.toFixed(2)} / ${profile.closeThresholdRight.toFixed(2)}` : '—'}</dd>
         </div>
       </dl>
     </section>

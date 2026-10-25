@@ -23,6 +23,8 @@ Exit condition: scores update reliably on physical iPhones and supported desktop
 
 ## Phase 2 — Reliable eye-state engine
 
+Implementation status: **implemented for MVP validation**.
+
 - Calibration flow
 - Filtering and hysteresis
 - Timestamp-based state machine
@@ -33,6 +35,8 @@ Exit condition: scores update reliably on physical iPhones and supported desktop
 Exit condition: agreed test scenarios pass without classifying face loss as closed eyes.
 
 ## Phase 3 — User-facing MVP
+
+Implementation status: **implemented for MVP validation**.
 
 - Mobile-first interface
 - Visual and optional audio alerts
