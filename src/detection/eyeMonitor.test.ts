@@ -104,4 +104,17 @@ describe('EyeMonitor', () => {
     expect(afterChange.alertStarted).toBe(false)
     expect(afterChange.sustainedClosureCount).toBe(1)
   })
+
+  it('does not count a sustained closure as a blink after the alert delay increases', () => {
+    const engine = monitor(400)
+    engine.update(observation(0, 0.05, 0.05))
+    engine.update(observation(100, 0.9, 0.9))
+    engine.update(observation(520, 0.9, 0.9))
+    engine.setAlertDelay(2000)
+    const reopened = engine.update(observation(700, 0.05, 0.05))
+
+    expect(reopened.state).toBe('open')
+    expect(reopened.blinkCount).toBe(0)
+    expect(reopened.sustainedClosureCount).toBe(1)
+  })
 })
