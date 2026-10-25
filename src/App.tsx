@@ -17,12 +17,14 @@ function App() {
   const animationFrameRef = useRef<number | null>(null)
   const lastInferenceRef = useRef(0)
   const inferenceTimesRef = useRef<number[]>([])
+  const sessionGenerationRef = useRef(0)
   const [sessionState, setSessionState] = useState<SessionState>('idle')
   const [observation, setObservation] = useState<FaceObservation | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
   const [delegate, setDelegate] = useState<'GPU' | 'CPU' | null>(null)
 
   const stopSession = useCallback(() => {
+    sessionGenerationRef.current += 1
     if (animationFrameRef.current !== null) {
       cancelAnimationFrame(animationFrameRef.current)
       animationFrameRef.current = null
@@ -75,29 +77,43 @@ function App() {
   }, [])
 
   const startSession = async () => {
+    const generation = ++sessionGenerationRef.current
     setErrorMessage('')
     setSessionState('starting-camera')
 
     try {
       const stream = await requestFrontCamera()
+      if (generation !== sessionGenerationRef.current) {
+        stopCamera(stream)
+        return
+      }
       streamRef.current = stream
 
       const video = videoRef.current
       if (!video) throw new Error('The camera preview is not available.')
       video.srcObject = stream
       await video.play()
+      if (generation !== sessionGenerationRef.current) {
+        return
+      }
 
       setSessionState('loading-model')
       const detector = await createFaceDetector()
+      if (generation !== sessionGenerationRef.current) {
+        detector.close()
+        return
+      }
       detectorRef.current = detector
       setDelegate(detector.delegate)
       setSessionState('running')
       animationFrameRef.current = requestAnimationFrame(processFrame)
     } catch (error) {
+      if (generation !== sessionGenerationRef.current) return
       detectorRef.current?.close()
       detectorRef.current = null
       stopCamera(streamRef.current)
       streamRef.current = null
+      if (videoRef.current) videoRef.current.srcObject = null
       setErrorMessage(cameraErrorMessage(error))
       setSessionState('error')
     }

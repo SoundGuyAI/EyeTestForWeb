@@ -13,7 +13,13 @@ export function CameraStage({ videoRef, observation, active }: CameraStageProps)
   useEffect(() => {
     const video = videoRef.current
     const canvas = canvasRef.current
-    if (!video || !canvas || !observation) return
+    if (!video || !canvas) return
+
+    if (!active || !observation) {
+      const context = canvas.getContext('2d')
+      if (context) context.clearRect(0, 0, canvas.width, canvas.height)
+      return
+    }
 
     const width = video.videoWidth
     const height = video.videoHeight
@@ -36,7 +42,7 @@ export function CameraStage({ videoRef, observation, active }: CameraStageProps)
       context.arc(point.x * width, point.y * height, 1.4, 0, Math.PI * 2)
       context.fill()
     }
-  }, [observation, videoRef])
+  }, [active, observation, videoRef])
 
   return (
     <section className="camera-shell" aria-label="Camera preview">
