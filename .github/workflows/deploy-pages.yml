@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      preview_ref:
+        description: Full commit SHA to preview; empty restores main-only site
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -12,29 +18,76 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Validate optional preview SHA
+        env:
+          PREVIEW_REF: ${{ inputs.preview_ref }}
+        run: |
+          if [ -n "$PREVIEW_REF" ]; then
+            printf '%s' "$PREVIEW_REF" | grep -Eq '^[0-9a-f]{40}$'
+          fi
+      - name: Checkout preview commit
+        if: github.event_name == 'workflow_dispatch' && inputs.preview_ref != ''
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.preview_ref }}
+          path: preview-source
+      - name: Checkout unchanged root release
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          path: root-source
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Verify and build
-        run: npm run lint && npm test && npm run build
+      - name: Refuse stale root deployment
+        working-directory: root-source
+        run: |
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$(git rev-parse HEAD)"
+      - name: Build unchanged root
+        working-directory: root-source
+        run: npm ci && npm run build
+      - name: Verify and build isolated preview
+        if: github.event_name == 'workflow_dispatch' && inputs.preview_ref != ''
+        working-directory: preview-source
+        run: |
+          npm ci
+          npm run lint
+          npm test
+          npm run build -- --base /EyeTestForWeb/preview/meditation-extreme/
+      - name: Preserve root parity for preview deployment
+        if: github.event_name == 'workflow_dispatch' && inputs.preview_ref != ''
+        run: |
+          set -eu
+          test "$(sha256sum root-source/dist/assets/index-B65uGWcY.js | cut -d' ' -f1)" = "3a7d92a77d044523aba24dd1d6178201c2c1560ab1be83cddec3b5b423c55f12"
+          test "$(sha256sum root-source/dist/assets/index-Dl4RbsdB.css | cut -d' ' -f1)" = "84be439e646e56f7feb3c6da2a9c7f8cbb42ed7a9fa9cbf09e89f2e78ed693ae"
+          curl --fail --silent --show-error https://soundguyai.github.io/EyeTestForWeb/ -o live-root.html
+          cmp live-root.html root-source/dist/index.html
+      - name: Assemble main site and optional isolated preview
+        env:
+          PREVIEW_REF: ${{ inputs.preview_ref }}
+        run: |
+          set -eu
+          mkdir -p site
+          cp -a root-source/dist/. site/
+          if [ -n "$PREVIEW_REF" ]; then
+            mkdir -p site/preview/meditation-extreme
+            cp -a preview-source/dist/. site/preview/meditation-extreme/
+          fi
+          diff -r root-source/dist/assets site/assets
+          cmp root-source/dist/index.html site/index.html
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: dist
+          path: site
 
   deploy:
     environment:
