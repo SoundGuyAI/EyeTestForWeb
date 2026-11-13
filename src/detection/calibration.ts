@@ -51,6 +51,26 @@ const guidanceForPhase = (phase: CalibrationStatus['phase']): string => {
   }
 }
 
+// Spoken calibration guidance gates phase progress: when narration is active a phase
+// only advances after its cue has finished playing, so instructions are never cut off
+// or heard after the moment they describe. With narration off or clips unavailable the
+// gate reads open and calibration runs exactly as before.
+export interface CalibrationNarrationGate {
+  narrationActive: boolean
+  positioningCueDone: boolean
+  openCueDone: boolean
+  blinkIntroDone: boolean
+  blinkPromptsDone: number
+}
+
+export const openCalibrationGate = (): CalibrationNarrationGate => ({
+  narrationActive: false,
+  positioningCueDone: false,
+  openCueDone: false,
+  blinkIntroDone: false,
+  blinkPromptsDone: 0,
+})
+
 export class CalibrationController {
   private phase: CalibrationStatus['phase'] = 'positioning'
   private goodSinceMs: number | null = null
@@ -67,8 +87,9 @@ export class CalibrationController {
   private blinkPeaksRight: number[] = []
   private profile: CalibrationProfile | null = null
 
-  update(observation: FaceObservation): CalibrationStatus {
+  update(observation: FaceObservation, gate?: CalibrationNarrationGate): CalibrationStatus {
     if (this.phase === 'complete') return this.status(1)
+    const cueOpen = (done: boolean) => !gate || !gate.narrationActive || done
 
     if (observation.quality !== 'good') {
       if (this.phase === 'positioning') this.goodSinceMs = null
@@ -90,12 +111,12 @@ export class CalibrationController {
     if (this.phase === 'positioning') {
       this.goodSinceMs ??= observation.timestampMs
       const elapsed = observation.timestampMs - this.goodSinceMs
-      if (elapsed >= positioningDurationMs) {
+      if (elapsed >= positioningDurationMs && cueOpen(gate?.positioningCueDone ?? true)) {
         this.phase = 'eyes-open'
         this.phaseStartedMs = observation.timestampMs
         return this.status(0)
       }
-      return this.status(clamp(elapsed / positioningDurationMs, 0, 1))
+      return this.status(clamp(elapsed / positioningDurationMs, 0, cueOpen(gate?.positioningCueDone ?? true) ? 1 : 0.99))
     }
 
     if (this.phase === 'eyes-open') {
@@ -104,7 +125,11 @@ export class CalibrationController {
       this.openRightSamples.push(observation.rightBlink)
       const elapsed = observation.timestampMs - this.phaseStartedMs
 
-      if (elapsed >= openSampleDurationMs && this.openLeftSamples.length >= 12) {
+      if (
+        elapsed >= openSampleDurationMs &&
+        this.openLeftSamples.length >= 12 &&
+        cueOpen(gate?.openCueDone ?? true)
+      ) {
         this.openLeft = median(this.openLeftSamples)
         this.openRight = median(this.openRightSamples)
         this.phase = 'blink-practice'
@@ -112,7 +137,7 @@ export class CalibrationController {
         return this.status(0)
       }
 
-      return this.status(clamp(elapsed / openSampleDurationMs, 0, 1))
+      return this.status(clamp(elapsed / openSampleDurationMs, 0, cueOpen(gate?.openCueDone ?? true) ? 1 : 0.99))
     }
 
     const candidateCloseLeft = clamp(this.openLeft + 0.24, 0.32, 0.68)
@@ -132,9 +157,13 @@ export class CalibrationController {
       observation.rightBlink <= candidateOpenRight
     ) {
       this.blinkLatched = false
-      this.completedBlinks += 1
-      this.blinkPeaksLeft.push(this.currentPeakLeft)
-      this.blinkPeaksRight.push(this.currentPeakRight)
+      const promptHeard =
+        !gate || !gate.narrationActive || (gate.blinkIntroDone && gate.blinkPromptsDone >= this.completedBlinks + 1)
+      if (promptHeard) {
+        this.completedBlinks += 1
+        this.blinkPeaksLeft.push(this.currentPeakLeft)
+        this.blinkPeaksRight.push(this.currentPeakRight)
+      }
       this.currentPeakLeft = 0
       this.currentPeakRight = 0
 
