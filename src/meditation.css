@@ -51,3 +51,4 @@ button:disabled { cursor:not-allowed;opacity:.5; }
 @media(prefers-reduced-motion:reduce) { .meditation-demo * { scroll-behavior:auto;transition:none!important;animation:none!important; } }
 
 .scene-subtitle p.reactive-dialogue { margin-top: 1rem; padding: .8rem 1rem; background: #fff7df; color: #534127; border-left: 3px solid #ac833f; border-radius: .4rem; font-size: .95rem; }
+.voice-picker { margin:12px 0 6px; }
