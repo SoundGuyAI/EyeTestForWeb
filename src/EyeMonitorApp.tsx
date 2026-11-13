@@ -7,7 +7,8 @@ import { Diagnostics } from './components/Diagnostics'
 import { MonitorPanel } from './components/MonitorPanel'
 import { MeditationPanel } from './MeditationPanel'
 import { SettingsPanel } from './components/SettingsPanel'
-import { CalibrationController, defaultCalibrationProfile } from './detection/calibration'
+import { CalibrationController, defaultCalibrationProfile, openCalibrationGate } from './detection/calibration'
+import { unlockNarration } from './audio/narration-player'
 import { createFaceDetector, type FaceDetector } from './detection/faceLandmarker'
 import { createFaceObservation } from './detection/faceObservation'
 import { EyeMonitor } from './detection/eyeMonitor'
@@ -85,6 +86,7 @@ function EyeMonitorApp() {
   const streamRef = useRef<MediaStream | null>(null)
   const detectorRef = useRef<FaceDetector | null>(null)
   const calibrationRef = useRef<CalibrationController | null>(null)
+  const cueGateRef = useRef(openCalibrationGate())
   const monitorRef = useRef<EyeMonitor | null>(null)
   const alertSoundRef = useRef<AlertSound | null>(null)
   const animationFrameRef = useRef<number | null>(null)
@@ -190,7 +192,7 @@ function EyeMonitorApp() {
       setObservation(nextObservation)
 
       if (calibrationRef.current) {
-        const nextCalibrationStatus = calibrationRef.current.update(nextObservation)
+        const nextCalibrationStatus = calibrationRef.current.update(nextObservation, cueGateRef.current)
         setCalibrationStatus(nextCalibrationStatus)
 
         if (nextCalibrationStatus.profile) {
@@ -252,6 +254,7 @@ function EyeMonitorApp() {
       }
       detectorRef.current = detector
       calibrationRef.current = new CalibrationController()
+      cueGateRef.current = openCalibrationGate()
       setCalibrationStatus(initialCalibrationStatus())
       setDelegate(detector.delegate)
       setSessionState('calibrating')
@@ -281,6 +284,7 @@ function EyeMonitorApp() {
 
   const recalibrate = () => {
     calibrationRef.current = new CalibrationController()
+    cueGateRef.current = openCalibrationGate()
     monitorRef.current = null
     setCalibrationStatus(initialCalibrationStatus())
     setProfile(null)
@@ -330,6 +334,7 @@ function EyeMonitorApp() {
           {errorMessage && <p className="error-message" role="alert">{errorMessage}</p>}
           <button className="primary-button" disabled={isStarting} onClick={() => {
             sceneRef.current?.closest('.serenity-stage')?.scrollIntoView({ block: 'start', behavior: 'instant' })
+            unlockNarration()
             void startSession()
           }}>{isStarting ? 'Starting camera...' : sessionState === 'error' ? 'Try camera again' : 'Start camera and calibrate'}</button>
           {isStarting && <button className="text-button danger-text" onClick={stopSession}>Cancel startup</button>}
@@ -352,7 +357,7 @@ function EyeMonitorApp() {
         <button aria-pressed={experience === 'meditation'} onClick={() => { if (experience !== 'meditation') stopSession(); setExperience('meditation') }}>Meditation: EXTREME</button>
         <button aria-pressed={experience === 'monitor'} onClick={() => { if (experience !== 'monitor') stopSession(); setExperience('monitor') }}>Eye monitor / original tool</button>
       </nav>
-      {experience === 'meditation' && <MeditationPanel eye={currentOutput.state} observation={observation} monitoring={sessionState === 'monitoring'} cameraBusy={isActive} onInputModeChange={() => stopSession()} cameraSurface={cameraSurface} showCameraPreview={showMeditationPreview} onCameraPreviewChange={setShowMeditationPreview} onStopCamera={stopSession} />}
+      {experience === 'meditation' && <MeditationPanel eye={currentOutput.state} observation={observation} monitoring={sessionState === 'monitoring'} calibration={sessionState === 'calibrating' ? calibrationStatus : null} cueGateRef={cueGateRef} cameraBusy={isActive} onInputModeChange={() => stopSession()} cameraSurface={cameraSurface} showCameraPreview={showMeditationPreview} onCameraPreviewChange={setShowMeditationPreview} onStopCamera={stopSession} />}
       {experience === 'monitor' && <section className="intro compact-intro">
         <div>
           <p className="eyebrow">Private, calibrated eye monitoring</p>
