@@ -5,6 +5,7 @@ import { CalibrationPanel } from './components/CalibrationPanel'
 import { CameraStage } from './components/CameraStage'
 import { Diagnostics } from './components/Diagnostics'
 import { MonitorPanel } from './components/MonitorPanel'
+import { MeditationPanel } from './MeditationPanel'
 import { SettingsPanel } from './components/SettingsPanel'
 import { CalibrationController, defaultCalibrationProfile } from './detection/calibration'
 import { createFaceDetector, type FaceDetector } from './detection/faceLandmarker'
@@ -75,6 +76,10 @@ const storeValue = (key: string, value: string) => {
 }
 
 function EyeMonitorApp() {
+  const [experience, setExperience] = useState<'meditation' | 'monitor'>('meditation')
+  const [showMeditationCamera, setShowMeditationCamera] = useState(false)
+  const experienceRef = useRef(experience)
+  useEffect(() => { experienceRef.current = experience }, [experience])
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const detectorRef = useRef<FaceDetector | null>(null)
@@ -201,7 +206,7 @@ function EyeMonitorApp() {
       } else if (monitorRef.current) {
         const output = monitorRef.current.update(nextObservation)
         setMonitorOutput(output)
-        if (output.alertStarted && soundEnabledRef.current) alertSoundRef.current?.play()
+        if (experienceRef.current === 'monitor' && output.alertStarted && soundEnabledRef.current) alertSoundRef.current?.play()
       }
     }
 
@@ -307,16 +312,21 @@ function EyeMonitorApp() {
   const currentOutput = monitorOutput ?? initialMonitorOutput()
 
   return (
-    <main className={`app-shell ${currentOutput.alerting ? 'app-alerting' : ''}`}>
+    <main className={`app-shell ${experience === 'monitor' && currentOutput.alerting ? 'app-alerting' : ''}`}>
       <header className="hero">
         <a className="brand" href={import.meta.env.BASE_URL} aria-label="EyeTestForWeb home">
           <span className="brand-mark" aria-hidden="true"><span /></span>
           <span>EyeTestForWeb</span>
         </a>
-        <span className="prototype-badge">Eye monitoring MVP</span>
+        <span className="prototype-badge">Meditation demo / draft</span>
       </header>
 
-      <section className="intro compact-intro">
+      <nav className="app-modes" aria-label="Experience">
+        <button aria-pressed={experience === 'meditation'} onClick={() => { if (experience !== 'meditation') stopSession(); setShowMeditationCamera(false); setExperience('meditation') }}>Meditation: EXTREME</button>
+        <button aria-pressed={experience === 'monitor'} onClick={() => setExperience('monitor')}>Eye monitor / original tool</button>
+      </nav>
+      {experience === 'meditation' && <MeditationPanel eye={currentOutput.state} observation={observation} monitoring={sessionState === 'monitoring'} cameraBusy={isActive} onInputModeChange={(mode) => setShowMeditationCamera(mode === 'camera')} onStartCamera={() => { void startSession() }} onStopCamera={stopSession} />}
+      {experience === 'monitor' && <section className="intro compact-intro">
         <div>
           <p className="eyebrow">Private, calibrated eye monitoring</p>
           <h1>Know when your eyes stay closed.</h1>
@@ -329,9 +339,10 @@ function EyeMonitorApp() {
           <span className="privacy-icon" aria-hidden="true">●</span>
           <p><strong>No video upload.</strong> Camera frames and eye signals stay in this tab.</p>
         </div>
-      </section>
+      </section>}
 
-      <div className="workspace">
+      {experience === 'meditation' && showMeditationCamera && <div className="camera-section-title"><p className="eyebrow">Optional real-eye input</p><h2>Camera setup and calibration</h2><p className="helper-copy">Manual rehearsal above needs no camera. The original detector and its calibration remain available here.</p></div>}
+      <div hidden={experience === 'meditation' && !showMeditationCamera}><div className="workspace">
         <CameraStage
           videoRef={videoRef}
           observation={observation}
@@ -339,11 +350,11 @@ function EyeMonitorApp() {
           showPreview={showPreview}
           mode={cameraMode}
           eyeState={currentOutput.state}
-          alerting={currentOutput.alerting}
+          alerting={experience === 'monitor' && currentOutput.alerting}
         />
 
         <div className="side-column">
-          {(sessionState === 'idle' || sessionState === 'error' || isStarting) && (
+          {((experience === 'monitor' && (sessionState === 'idle' || sessionState === 'error')) || isStarting || (experience === 'meditation' && sessionState === 'error')) && (
             <section className="panel controls">
               <p className="eyebrow">Eye monitoring session</p>
               <h2>{isStarting ? 'Starting securely…' : 'Ready when you are'}</h2>
@@ -384,7 +395,7 @@ function EyeMonitorApp() {
             />
           )}
 
-          {sessionState === 'monitoring' && monitorOutput && observation && (
+          {experience === 'monitor' && sessionState === 'monitoring' && monitorOutput && observation && (
             <MonitorPanel
               output={monitorOutput}
               quality={observation.quality}
@@ -394,7 +405,7 @@ function EyeMonitorApp() {
             />
           )}
 
-          {isActive && (
+          {experience === 'monitor' && isActive && (
             <SettingsPanel
               alertDelayMs={alertDelayMs}
               soundEnabled={soundEnabled}
@@ -419,7 +430,9 @@ function EyeMonitorApp() {
         </div>
       </div>
 
-      <section className="limitations">
+      </div>
+
+      {experience === 'monitor' && <section className="limitations">
         <p className="eyebrow">Important boundary</p>
         <h2>Awareness tool, not safety or medical monitoring.</h2>
         <p>
@@ -427,7 +440,7 @@ function EyeMonitorApp() {
           differences. Do not use this app to determine whether it is safe to drive or operate machinery,
           and do not rely on it during an emergency.
         </p>
-      </section>
+      </section>}
 
       <footer>
         <span>EyeTestForWeb · Open-source, on-device browser prototype</span>
