@@ -1,67 +1,99 @@
 import { describe, expect, it } from 'vitest'
-import { CalibrationController } from './calibration'
-import type { FaceObservation, SignalQuality } from './types'
+import { CalibrationController, openCalibrationGate } from './calibration'
+import type { CalibrationNarrationGate } from './calibration'
+import type { FaceObservation } from './types'
 
-const observation = (
-  timestampMs: number,
-  leftBlink = 0.06,
-  rightBlink = 0.07,
-  quality: SignalQuality = 'good',
-): FaceObservation => ({
+const obs = (timestampMs: number, blink = 0.05, quality: FaceObservation['quality'] = 'good'): FaceObservation => ({
   timestampMs,
-  leftBlink,
-  rightBlink,
+  leftBlink: blink,
+  rightBlink: blink,
   quality,
-  faceWidthRatio: 0.45,
+  faceWidthRatio: 0.4,
   faceCenterX: 0.5,
-  inferenceMs: 10,
+  inferenceMs: 5,
   processedFps: 15,
   landmarks: [],
 })
 
-describe('CalibrationController', () => {
-  it('builds personalized thresholds after open-eye sampling and three blinks', () => {
+const gated = (over: Partial<CalibrationNarrationGate> = {}): CalibrationNarrationGate => ({
+  narrationActive: true,
+  positioningCueDone: false,
+  openCueDone: false,
+  blinkIntroDone: false,
+  blinkPromptsDone: 0,
+  ...over,
+})
+
+const runFrames = (controller: CalibrationController, startMs: number, frames: number, blink = 0.05, gate?: CalibrationNarrationGate) => {
+  let status
+  for (let i = 0; i < frames; i++) status = controller.update(obs(startMs + i * 100, blink), gate)
+  return status
+}
+
+const blinkOnce = (controller: CalibrationController, startMs: number, gate?: CalibrationNarrationGate) => {
+  runFrames(controller, startMs, 3, 0.6, gate) // both eyes closed long enough to latch
+  return runFrames(controller, startMs + 300, 3, 0.05, gate) // reopen
+}
+
+describe('CalibrationController narration gate', () => {
+  it('advances freely when narration is inactive', () => {
     const controller = new CalibrationController()
-    controller.update(observation(0))
-    controller.update(observation(900))
-
-    for (let time = 1000; time <= 3200; time += 100) {
-      controller.update(observation(time))
-    }
-
-    let status = controller.update(observation(3300))
-    expect(status.phase).toBe('blink-practice')
-
-    for (let blink = 0; blink < 3; blink += 1) {
-      controller.update(observation(3400 + blink * 300, 0.82, 0.78))
-      status = controller.update(observation(3500 + blink * 300))
-    }
-
-    expect(status.phase).toBe('complete')
-    expect(status.profile).not.toBeNull()
-    expect(status.profile!.closeThresholdLeft).toBeGreaterThan(status.profile!.openThresholdLeft)
-    expect(status.profile!.closeThresholdRight).toBeGreaterThan(status.profile!.openThresholdRight)
+    const gate = openCalibrationGate()
+    expect(runFrames(controller, 0, 10, 0.05, gate)?.phase).toBe('eyes-open')
+    expect(runFrames(controller, 1000, 25, 0.05, gate)?.phase).toBe('blink-practice')
+    blinkOnce(controller, 4000, gate)
+    blinkOnce(controller, 5000, gate)
+    const status = blinkOnce(controller, 6000, gate)
+    expect(status?.completedBlinks).toBe(3)
+    expect(status?.phase).toBe('complete')
+    expect(status?.profile).not.toBeNull()
   })
 
-  it('does not advance positioning while signal quality is poor', () => {
+  it('holds positioning until the positioning cue has finished', () => {
     const controller = new CalibrationController()
-    controller.update(observation(0, 0, 0, 'off-center'))
-    const status = controller.update(observation(2000, 0, 0, 'good'))
-    expect(status.phase).toBe('positioning')
-    expect(status.progress).toBe(0)
+    const gate = gated()
+    const held = runFrames(controller, 0, 30, 0.05, gate)
+    expect(held?.phase).toBe('positioning')
+    expect(held?.progress).toBeLessThan(1)
+    gate.positioningCueDone = true
+    expect(runFrames(controller, 3000, 2, 0.05, gate)?.phase).toBe('eyes-open')
   })
 
-  it('restarts open-eye sampling after signal quality is lost', () => {
+  it('holds eyes-open until the open cue has finished', () => {
     const controller = new CalibrationController()
-    controller.update(observation(0))
-    controller.update(observation(900))
-    controller.update(observation(1000))
-    controller.update(observation(2500, 0, 0, 'no-face'))
+    const gate = gated({ positioningCueDone: true })
+    runFrames(controller, 0, 10, 0.05, gate)
+    const held = runFrames(controller, 1000, 40, 0.05, gate)
+    expect(held?.phase).toBe('eyes-open')
+    gate.openCueDone = true
+    expect(runFrames(controller, 5000, 2, 0.05, gate)?.phase).toBe('blink-practice')
+  })
 
-    const restarted = controller.update(observation(2600))
-    const stillSampling = controller.update(observation(3500))
-    expect(restarted.phase).toBe('eyes-open')
-    expect(restarted.progress).toBe(0)
-    expect(stillSampling.phase).toBe('eyes-open')
+  it('counts a blink only after its prompt has finished', () => {
+    const controller = new CalibrationController()
+    const gate = gated({ positioningCueDone: true, openCueDone: true })
+    runFrames(controller, 0, 10, 0.05, gate)
+    runFrames(controller, 1000, 40, 0.05, gate)
+    const early = blinkOnce(controller, 6000, gate)
+    expect(early?.completedBlinks).toBe(0)
+    gate.blinkIntroDone = true
+    gate.blinkPromptsDone = 1
+    const counted = blinkOnce(controller, 8000, gate)
+    expect(counted?.completedBlinks).toBe(1)
+  })
+
+  it('completes after three prompted blinks', () => {
+    const controller = new CalibrationController()
+    const gate = gated({ positioningCueDone: true, openCueDone: true, blinkIntroDone: true, blinkPromptsDone: 0 })
+    runFrames(controller, 0, 10, 0.05, gate)
+    runFrames(controller, 1000, 40, 0.05, gate)
+    for (let blink = 1; blink <= 3; blink++) {
+      gate.blinkPromptsDone = blink
+      const status = blinkOnce(controller, 6000 + blink * 2000, gate)
+      expect(status?.completedBlinks).toBe(blink)
+    }
+    const done = runFrames(controller, 13000, 1, 0.05, gate)
+    expect(done?.phase).toBe('complete')
+    expect(done?.profile).not.toBeNull()
   })
 })
