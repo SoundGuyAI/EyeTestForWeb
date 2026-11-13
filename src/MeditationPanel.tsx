@@ -225,4 +225,4 @@ export function MeditationPanel({ eye, observation, monitoring, calibration, cue
       </div>
     </section>
   )
-          }
+}
