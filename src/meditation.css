@@ -52,3 +52,49 @@ button:disabled { cursor:not-allowed;opacity:.5; }
 
 .scene-subtitle p.reactive-dialogue { margin-top: 1rem; padding: .8rem 1rem; background: #fff7df; color: #534127; border-left: 3px solid #ac833f; border-radius: .4rem; font-size: .95rem; }
 .voice-picker { margin:12px 0 6px; }
+
+/* The camera video stays mounted and playing, even when its preview is hidden. */
+.scene-space { position:relative; }
+.serenity-stage { scroll-margin-top:12px; }
+.scene-camera-surface { position:absolute;inset:0; }
+.scene-setup .zen-room { height:450px;opacity:.25; }
+.scene-calibration { position:absolute;inset:0;display:grid;place-items:center;padding:16px; }
+.scene-calibration .panel { width:min(100%,410px);background:#102523;box-shadow:0 12px 40px #0005;border-color:#547266; }
+.scene-camera-start p { color:#c0d3c8;line-height:1.5;font-size:14px; }
+.scene-camera-start .helper-copy { font-size:11px;margin:14px 0 0; }
+.scene-camera-feed { position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none; }
+.scene-camera-feed.is-visible { width:120px;height:90px;top:10px;right:10px;opacity:1;z-index:2;border:1px solid #b5cab9;border-radius:10px; }
+.scene-camera-feed .camera-shell { border:0;border-radius:0; }
+.scene-camera-feed .camera-frame { aspect-ratio:4/3; }
+.scene-camera-feed .camera-caption,.scene-camera-feed .camera-status-badge,.scene-camera-feed .preview-off-message,.scene-camera-feed .camera-placeholder p { display:none; }
+.scene-camera-feed .camera-placeholder { gap:0; }
+.scene-setup:has(.with-preview) .zen-room { height:540px; }
+.with-preview .scene-calibration { padding-top:110px; }
+.scene-calibration .calibration-guidance { min-height:0;margin:16px 0;font-size:1.1rem; }
+.scene-calibration .calibration-panel .helper-copy { margin-bottom:0; }
+.scene-calibration .calibration-steps { margin-bottom:12px; }
+.camera-preview-choice { display:flex;align-items:center;gap:10px;min-height:48px;font-size:13px;line-height:1.4;color:#c9d8d1;cursor:pointer; }
+.camera-preview-choice input { width:20px;height:20px;flex:none;accent-color:#cedab7; }
+@media(max-width:700px) {
+  .scene-setup .zen-room { height:390px; }
+  .scene-setup:has(.with-preview) .zen-room { height:480px; }
+  .scene-calibration { padding:12px; }
+  .scene-calibration .panel { padding:16px; }
+  .scene-calibration h2 { font-size:1.5rem; }
+  .scene-calibration .calibration-panel .helper-copy { display:none; }
+  .scene-calibration .stacked-actions { margin-top:10px;gap:0; }
+  .scene-camera-feed.is-visible { width:108px;height:81px; }
+  .with-preview .scene-calibration { padding-top:100px; }
+}
+.scene-caption { flex-wrap:wrap; }
+.scene-caption .camera-preview-choice { flex-basis:100%;text-transform:none;letter-spacing:0;min-height:28px;font-size:12px; }
+.scene-calibration .quality-pill { align-self:flex-start;white-space:nowrap; }
+@media(max-width:700px) {
+  .app-modes { flex-wrap:nowrap;gap:6px;margin-top:18px; }
+  .app-modes button { width:auto;flex:1;padding:8px 10px;font-size:11px;min-height:42px; }
+  .meditation-demo { margin-top:22px; }
+  .meditation-heading { gap:12px;margin-bottom:20px; }
+  .meditation-heading h1 { font-size:2.4rem; }
+  .meditation-intro { font-size:12px;line-height:1.5; }
+  .meditation-heading .eyebrow { font-size:9px; }
+}
