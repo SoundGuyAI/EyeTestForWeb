@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { EyeState, FaceObservation } from './detection/types'
 import { LessonController, lesson } from './meditation-lesson'
 import './meditation.css'
-import { narrationAssets } from './narration-assets'
+import { defaultNarrationVoice, narrationVoices } from './narration-assets'
+import type { NarrationVoice } from './narration-assets'
 
 type Props = { eye: EyeState; observation: FaceObservation | null; monitoring: boolean; onStartCamera: () => void; onStopCamera: () => void; cameraBusy: boolean; onInputModeChange: (mode: 'manual' | 'camera') => void }
 
@@ -12,6 +13,7 @@ export function MeditationPanel({ eye, observation, monitoring, onStartCamera, o
   const [mode, setMode] = useState<'manual' | 'camera'>('manual')
   const [manualEye, setManualEye] = useState<EyeState>('open')
   const [audioEnabled, setAudioEnabled] = useState(true)
+  const [voice, setVoice] = useState<NarrationVoice>(defaultNarrationVoice)
   const [audioStatus, setAudioStatus] = useState('Narration ready. Start the lesson to play.')
   const audio = useRef<HTMLAudioElement | null>(null)
   const audioKind = useRef<'cue' | 'response'>('cue')
@@ -43,7 +45,7 @@ export function MeditationPanel({ eye, observation, monitoring, onStartCamera, o
     const id = snapshot.feedback?.id ?? cueId
     const key = `${snapshot.step}:${id}`
     if (spoken.current.has(key)) return
-    const source = narrationAssets[id]
+    const source = narrationVoices[voice][id]
     if (!source) return
     stopAudio()
     const clip = new Audio(source)
@@ -54,7 +56,7 @@ export function MeditationPanel({ eye, observation, monitoring, onStartCamera, o
     clip.onerror = () => { if (audio.current === clip) { audio.current = null; setAudioStatus('Audio unavailable. Subtitles and eye controls still work.') } }
     clip.onplaying = () => setAudioStatus('Narration playing. The eye-hold timer waits until it finishes.')
     void clip.play().catch(() => { if (audio.current === clip) { audio.current = null; setAudioStatus('Playback blocked. Use Enable narration or continue with subtitles.') } })
-  }, [snapshot.step, snapshot.running, snapshot.paused, snapshot.feedback, audioEnabled])
+  }, [snapshot.step, snapshot.running, snapshot.paused, snapshot.feedback, audioEnabled, voice])
   const cue = lesson[snapshot.step]
   const started = snapshot.running || snapshot.complete
   const disrupted = snapshot.step >= 3
@@ -64,6 +66,13 @@ export function MeditationPanel({ eye, observation, monitoring, onStartCamera, o
     if (next === 'manual') onStopCamera()
   }
   const start = () => { stopAudio(); spoken.current.clear(); setManualEye('open'); setSnapshot(controller.current.start()) }
+  const changeVoice = (next: NarrationVoice) => {
+    if (next === voice) return
+    stopAudio()
+    spoken.current.delete(`${snapshot.step}:${cue.id}`)
+    if (snapshot.feedback) spoken.current.delete(`${snapshot.step}:${snapshot.feedback.id}`)
+    setVoice(next)
+  }
 
   return (
     <section className="meditation-demo" aria-label="Meditation EXTREME demo">
@@ -100,11 +109,11 @@ export function MeditationPanel({ eye, observation, monitoring, onStartCamera, o
           {mode === 'manual' && <div className="manual-eye-controls" role="group" aria-label="Simulated eye state"><button aria-pressed={manualEye === 'open'} onClick={() => setManualEye('open')}>Eyes open</button><button aria-pressed={manualEye === 'closed'} onClick={() => setManualEye('closed')}>Eyes closed</button></div>}
           {mode === 'camera' && <p className="lesson-signal">{monitoring ? `Detector: ${eye.replaceAll('-', ' ')}` : 'Detector: waiting for calibration'}</p>}
           {snapshot.running && <div className="hold-meter"><div role="progressbar" aria-label="Current eye hold" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}><span style={{ width: `${progress}%` }} /></div><p>{snapshot.paused ? 'Paused. Resume when ready.' : snapshot.waitingForSignal ? 'Waiting for a usable, fresh face signal. No progress counted.' : cue.target === 'wait' ? 'A moment to settle in...' : `Hold both eyes ${cue.target}. Brief blinks and one-eye closures do not complete this cue.`}</p></div>}
-          <div className="voice-note"><strong>Spoken narration + subtitles</strong><p>Calm instructions, unnecessary bureaucracy. Extra responses wait for a reliable opposite eye state, never tracking loss.</p><button className="secondary-button" aria-pressed={audioEnabled} onClick={() => { stopAudio(); spoken.current.delete(`${snapshot.step}:${cue.id}`); setAudioEnabled(!audioEnabled) }}>{audioEnabled ? 'Mute narration' : 'Enable narration'}</button><p role="status">{audioStatus}</p></div>
+          <div className="voice-note"><strong>Spoken narration + subtitles</strong><p>Calm instructions, unnecessary bureaucracy. Extra responses wait for a reliable opposite eye state, never tracking loss.</p><div className="lesson-mode voice-picker" role="group" aria-label="Narration voice"><button aria-pressed={voice === 'female'} onClick={() => changeVoice('female')}>Female voice</button><button aria-pressed={voice === 'male'} onClick={() => changeVoice('male')}>Male voice</button></div><button className="secondary-button" aria-pressed={audioEnabled} onClick={() => { stopAudio(); spoken.current.delete(`${snapshot.step}:${cue.id}`); setAudioEnabled(!audioEnabled) }}>{audioEnabled ? 'Mute narration' : 'Enable narration'}</button><p role="status">{audioStatus}</p></div>
           <p className="lesson-safety">Play seated, with the device supported. Open your eyes or stop at any time. No flashing effects, breath holding, recording or medical claims.</p>
           {mode === 'camera' && <button className="text-button danger-text" onClick={() => { stopAudio(); spoken.current.clear(); setSnapshot(controller.current.reset()); onStopCamera() }}>End lesson and stop camera</button>}
         </aside>
       </div>
     </section>
   )
-            }
+        }
