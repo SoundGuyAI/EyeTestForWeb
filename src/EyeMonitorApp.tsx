@@ -77,7 +77,8 @@ const storeValue = (key: string, value: string) => {
 
 function EyeMonitorApp() {
   const [experience, setExperience] = useState<'meditation' | 'monitor'>('meditation')
-  const [showMeditationCamera, setShowMeditationCamera] = useState(false)
+  const [showMeditationPreview, setShowMeditationPreview] = useState(false)
+  const sceneRef = useRef<HTMLDivElement>(null)
   const experienceRef = useRef(experience)
   useEffect(() => { experienceRef.current = experience }, [experience])
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -311,6 +312,32 @@ function EyeMonitorApp() {
         : 'idle'
   const currentOutput = monitorOutput ?? initialMonitorOutput()
 
+  const cameraStage = <CameraStage
+    videoRef={videoRef} observation={observation} active={isActive}
+    showPreview={experience === 'meditation' ? showMeditationPreview : showPreview}
+    mode={cameraMode} eyeState={currentOutput.state}
+    alerting={experience === 'monitor' && currentOutput.alerting}
+  />
+  const cameraSurface = <div className={`scene-camera-surface ${showMeditationPreview ? 'with-preview' : ''}`} ref={sceneRef}>
+    <div className={`scene-camera-feed ${showMeditationPreview ? 'is-visible' : ''}`}>{cameraStage}</div>
+    {sessionState !== 'monitoring' && <div className="scene-calibration">
+      {sessionState === 'calibrating' ? <CalibrationPanel status={calibrationStatus}
+        onUseDefaults={() => beginMonitoring(defaultCalibrationProfile())} onStop={stopSession} /> :
+        <section className="panel scene-camera-start" aria-label="Eye input setup">
+          <p className="eyebrow">Use my eyes</p>
+          <h2>{isStarting ? 'Getting ready' : 'Your eyes lead the way.'}</h2>
+          <p role="status">{sessionState === 'starting-camera' ? 'Allow front-camera access in your browser.' : sessionState === 'loading-model' ? 'Loading the on-device eye detector...' : 'Phone at eye level. Center your face, keep eyes open, then blink three times.'}</p>
+          {errorMessage && <p className="error-message" role="alert">{errorMessage}</p>}
+          <button className="primary-button" disabled={isStarting} onClick={() => {
+            sceneRef.current?.closest('.serenity-stage')?.scrollIntoView({ block: 'start', behavior: 'instant' })
+            void startSession()
+          }}>{isStarting ? 'Starting camera...' : sessionState === 'error' ? 'Try camera again' : 'Start camera and calibrate'}</button>
+          {isStarting && <button className="text-button danger-text" onClick={stopSession}>Cancel startup</button>}
+          <p className="helper-copy">Camera images stay in this tab. No recording or upload. Manual rehearsal is available below.</p>
+        </section>}
+    </div>}
+  </div>
+
   return (
     <main className={`app-shell ${experience === 'monitor' && currentOutput.alerting ? 'app-alerting' : ''}`}>
       <header className="hero">
@@ -322,10 +349,10 @@ function EyeMonitorApp() {
       </header>
 
       <nav className="app-modes" aria-label="Experience">
-        <button aria-pressed={experience === 'meditation'} onClick={() => { if (experience !== 'meditation') stopSession(); setShowMeditationCamera(false); setExperience('meditation') }}>Meditation: EXTREME</button>
-        <button aria-pressed={experience === 'monitor'} onClick={() => setExperience('monitor')}>Eye monitor / original tool</button>
+        <button aria-pressed={experience === 'meditation'} onClick={() => { if (experience !== 'meditation') stopSession(); setExperience('meditation') }}>Meditation: EXTREME</button>
+        <button aria-pressed={experience === 'monitor'} onClick={() => { if (experience !== 'monitor') stopSession(); setExperience('monitor') }}>Eye monitor / original tool</button>
       </nav>
-      {experience === 'meditation' && <MeditationPanel eye={currentOutput.state} observation={observation} monitoring={sessionState === 'monitoring'} cameraBusy={isActive} onInputModeChange={(mode) => setShowMeditationCamera(mode === 'camera')} onStartCamera={() => { void startSession() }} onStopCamera={stopSession} />}
+      {experience === 'meditation' && <MeditationPanel eye={currentOutput.state} observation={observation} monitoring={sessionState === 'monitoring'} cameraBusy={isActive} onInputModeChange={() => stopSession()} cameraSurface={cameraSurface} showCameraPreview={showMeditationPreview} onCameraPreviewChange={setShowMeditationPreview} onStopCamera={stopSession} />}
       {experience === 'monitor' && <section className="intro compact-intro">
         <div>
           <p className="eyebrow">Private, calibrated eye monitoring</p>
@@ -341,20 +368,11 @@ function EyeMonitorApp() {
         </div>
       </section>}
 
-      {experience === 'meditation' && showMeditationCamera && <div className="camera-section-title"><p className="eyebrow">Optional real-eye input</p><h2>Camera setup and calibration</h2><p className="helper-copy">Manual rehearsal above needs no camera. The original detector and its calibration remain available here.</p></div>}
-      <div hidden={experience === 'meditation' && !showMeditationCamera}><div className="workspace">
-        <CameraStage
-          videoRef={videoRef}
-          observation={observation}
-          active={isActive}
-          showPreview={showPreview}
-          mode={cameraMode}
-          eyeState={currentOutput.state}
-          alerting={experience === 'monitor' && currentOutput.alerting}
-        />
+      <div hidden={experience !== 'monitor'}><div className="workspace">
+        {experience === 'monitor' && cameraStage}
 
         <div className="side-column">
-          {((experience === 'monitor' && (sessionState === 'idle' || sessionState === 'error')) || isStarting || (experience === 'meditation' && sessionState === 'error')) && (
+          {((experience === 'monitor' && (sessionState === 'idle' || sessionState === 'error')) || (experience === 'monitor' && isStarting)) && (
             <section className="panel controls">
               <p className="eyebrow">Eye monitoring session</p>
               <h2>{isStarting ? 'Starting securely…' : 'Ready when you are'}</h2>
@@ -387,7 +405,7 @@ function EyeMonitorApp() {
             </section>
           )}
 
-          {sessionState === 'calibrating' && (
+          {experience === 'monitor' && sessionState === 'calibrating' && (
             <CalibrationPanel
               status={calibrationStatus}
               onUseDefaults={() => beginMonitoring(defaultCalibrationProfile())}
@@ -418,7 +436,7 @@ function EyeMonitorApp() {
             />
           )}
 
-          {showDiagnostics && isActive && (
+          {experience === 'monitor' && showDiagnostics && isActive && (
             <Diagnostics
               observation={observation}
               delegate={delegate}
