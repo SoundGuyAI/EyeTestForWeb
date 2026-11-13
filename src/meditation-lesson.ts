@@ -9,24 +9,54 @@ export const lesson = [
   { id: 'return', title: 'Peace, provisionally approved', target: 'open', holdMs: 2200, line: 'And open. Congratulations. You have completed the introductory peace compliance procedure.' },
 ] as const
 
-export interface LessonSnapshot { step: number; heldMs: number; running: boolean; paused: boolean; complete: boolean; waitingForSignal: boolean }
+export const responses = {
+  open: [
+    { id: 'open-nudge-1', line: 'A small clarification: this is the eyes-open portion of the exercise.' },
+    { id: 'open-nudge-2', line: 'The serenity inspector cannot approve what you refuse to look at. Open both eyes when you are ready.' },
+  ],
+  closed: [
+    { id: 'closed-nudge-1', line: 'Your eyes are still open. The world has agreed to manage without supervision.' },
+    { id: 'closed-nudge-2', line: 'We have detected continued visual management. Please close both eyes to delegate reality.' },
+  ],
+} as const
+
+export interface LessonSnapshot { step: number; heldMs: number; running: boolean; paused: boolean; complete: boolean; waitingForSignal: boolean; feedback: { id: string; line: string } | null }
 export class LessonController {
-  private snapshot: LessonSnapshot = { step: 0, heldMs: 0, running: false, paused: false, complete: false, waitingForSignal: false }
+  private snapshot: LessonSnapshot = { step: 0, heldMs: 0, running: false, paused: false, complete: false, waitingForSignal: false, feedback: null }
+  private wrongMs = 0
+  private nudges = 0
   get(): LessonSnapshot { return { ...this.snapshot } }
-  start() { this.snapshot = { step: 0, heldMs: 0, running: true, paused: false, complete: false, waitingForSignal: false }; return this.get() }
-  reset() { this.snapshot = { step: 0, heldMs: 0, running: false, paused: false, complete: false, waitingForSignal: false }; return this.get() }
-  pause(paused: boolean) { this.snapshot.paused = paused; this.snapshot.heldMs = 0; return this.get() }
+  start() { this.wrongMs = 0; this.nudges = 0; this.snapshot = { step: 0, heldMs: 0, running: true, paused: false, complete: false, waitingForSignal: false, feedback: null }; return this.get() }
+  reset() { this.wrongMs = 0; this.nudges = 0; this.snapshot = { step: 0, heldMs: 0, running: false, paused: false, complete: false, waitingForSignal: false, feedback: null }; return this.get() }
+  pause(paused: boolean) { this.wrongMs = 0; this.snapshot.feedback = null; this.snapshot.paused = paused; this.snapshot.heldMs = 0; return this.get() }
   update(deltaMs: number, eye: EyeState, signalGood: boolean): LessonSnapshot {
     const s = this.snapshot
     if (!s.running || s.paused || s.complete) return this.get()
     s.waitingForSignal = !signalGood
     const cue = lesson[s.step]
-    if (!signalGood || (cue.target !== 'wait' && eye !== cue.target)) { s.heldMs = 0; return this.get() }
-    // Never turn a background-tab gap, delayed frame, or stale detector output into progress.
-    if (!Number.isFinite(deltaMs) || deltaMs < 0 || deltaMs > 300) { s.heldMs = 0; return this.get() }
+    const freshFrame = Number.isFinite(deltaMs) && deltaMs >= 0 && deltaMs <= 300
+    if (!signalGood || !freshFrame) { s.heldMs = 0; this.wrongMs = 0; s.feedback = null; return this.get() }
+    if (cue.target !== 'wait' && eye !== cue.target) {
+      s.heldMs = 0
+      // Only a confidently detected opposite bilateral state merits a response.
+      // Unknown, blinks, winks and tracking loss are not player choices.
+      const opposite = cue.target === 'open' ? 'closed' : 'open'
+      if (eye !== opposite) { this.wrongMs = 0; s.feedback = null; return this.get() }
+      this.wrongMs += deltaMs
+      const delay = this.nudges === 0 ? 5000 : 12000
+      if (this.wrongMs >= delay && this.nudges < 2) {
+        s.feedback = responses[cue.target][this.nudges]
+        this.nudges += 1
+        this.wrongMs = 0
+      }
+      return this.get()
+    }
+    this.wrongMs = 0
+    s.feedback = null
     s.heldMs += deltaMs
     if (s.heldMs >= cue.holdMs) {
       s.heldMs = 0
+      this.nudges = 0
       if (s.step === lesson.length - 1) { s.running = false; s.complete = true }
       else s.step += 1
     }
