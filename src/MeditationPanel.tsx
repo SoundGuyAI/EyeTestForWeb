@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import type { EyeState, FaceObservation } from './detection/types'
 import { LessonController, lesson } from './meditation-lesson'
 import './meditation.css'
 import { defaultNarrationVoice, narrationVoices } from './narration-assets'
 import type { NarrationVoice } from './narration-assets'
 
-type Props = { eye: EyeState; observation: FaceObservation | null; monitoring: boolean; onStartCamera: () => void; onStopCamera: () => void; cameraBusy: boolean; onInputModeChange: (mode: 'manual' | 'camera') => void }
+type Props = { eye: EyeState; observation: FaceObservation | null; monitoring: boolean; cameraSurface: ReactNode; showCameraPreview: boolean; onCameraPreviewChange: (show: boolean) => void; onStopCamera: () => void; cameraBusy: boolean; onInputModeChange: (mode: 'manual' | 'camera') => void }
 
-export function MeditationPanel({ eye, observation, monitoring, onStartCamera, onStopCamera, cameraBusy, onInputModeChange }: Props) {
+export function MeditationPanel({ eye, observation, monitoring, cameraSurface, showCameraPreview, onCameraPreviewChange, onStopCamera, cameraBusy, onInputModeChange }: Props) {
   const controller = useRef(new LessonController())
   const [snapshot, setSnapshot] = useState(() => new LessonController().get())
-  const [mode, setMode] = useState<'manual' | 'camera'>('manual')
+  const [mode, setMode] = useState<'manual' | 'camera'>('camera')
   const [manualEye, setManualEye] = useState<EyeState>('open')
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [voice, setVoice] = useState<NarrationVoice>(defaultNarrationVoice)
@@ -82,12 +83,13 @@ export function MeditationPanel({ eye, observation, monitoring, onStartCamera, o
       </div>
       <div className="meditation-layout">
         <div className={`serenity-stage ${disrupted ? 'inspection-active' : ''} ${snapshot.complete ? 'lesson-complete' : ''}`}>
-          <div className="scene-caption"><span>01 / A perfectly ordinary moment</span><span>{mode === 'manual' ? 'REHEARSAL / CAMERA OFF' : 'CAMERA INPUT'}</span></div>
-          <div className="zen-room" aria-hidden="true">
+          <div className="scene-caption"><span>01 / A perfectly ordinary moment</span><span>{mode === 'manual' ? 'REHEARSAL / CAMERA OFF' : 'CAMERA INPUT'}</span>{mode === 'camera' && <label className="camera-preview-choice"><input type="checkbox" checked={showCameraPreview} onChange={(event) => onCameraPreviewChange(event.target.checked)} /> Show camera preview in corner</label>}</div>
+          <div className={`scene-space ${mode === 'camera' && !monitoring ? 'scene-setup' : ''}`}><div className="zen-room" aria-hidden="true">
             <div className="zen-window" /><div className="zen-horizon" /><div className="zen-orbit orbit-one" /><div className="zen-orbit orbit-two" />
             <div className="zen-stone stone-bottom" /><div className="zen-stone stone-middle" /><div className="zen-stone stone-top" />
             {disrupted && <><div className="inspection-slip slip-one">DEPT. OF INNER PEACE<br /><strong>INSPECTION<br />IN PROGRESS</strong><small>Please do not disturb the tranquility.</small></div><div className="inspection-slip slip-two">FORM 01-B<br /><strong>RELAXATION<br />IS MANDATORY</strong><small>Failure to unwind may result in more forms.</small></div><div className="inspection-stamp">{snapshot.complete ? 'PROVISIONALLY CALM' : 'CALM PENDING'}</div></>}
           </div>
+          {mode === 'camera' && cameraSurface}</div>
           <div className="scene-subtitle" role="status" aria-live="polite">
             <p className="cue-label">{snapshot.complete ? 'First level complete' : started ? `Cue ${snapshot.step + 1} of ${lesson.length} / ${snapshot.paused ? 'Paused' : cue.target === 'wait' ? 'Settle in' : `${cue.target === 'closed' ? 'Close' : 'Open'} both eyes`}` : 'A small moment of peace, awaiting approval'}</p>
             <h2>{snapshot.complete ? 'You have been certified almost serene.' : started ? cue.title : 'The world can wait. Probably.'}</h2>
@@ -101,8 +103,7 @@ export function MeditationPanel({ eye, observation, monitoring, onStartCamera, o
             <button aria-pressed={mode === 'manual'} onClick={() => changeMode('manual')}>Manual rehearsal</button><button aria-pressed={mode === 'camera'} onClick={() => changeMode('camera')}>Use my eyes</button>
           </div>
           <p className="lesson-mode-copy">{mode === 'manual' ? 'Camera off. Use the two buttons below to simulate eye states. This tests the scene, not eye detection.' : 'Your front camera supplies eye states after calibration. Position it at eye level. Camera images stay in this tab.'}</p>
-          {mode === 'camera' && !monitoring && <button className="secondary-button" disabled={cameraBusy} onClick={onStartCamera}>{cameraBusy ? 'Camera setup below...' : 'Start camera and calibrate'}</button>}
-          {mode === 'camera' && !monitoring && <p className="helper-copy">Complete the existing calibration in the camera panel below, then start the lesson here.</p>}
+          {mode === 'camera' && !monitoring && <p className="helper-copy">{cameraBusy ? 'Follow the calibration in the scene.' : 'Start your camera in the scene above. Preview is optional; tracking works with it hidden.'}</p>}
           {!started && <button className="meditation-start" disabled={mode === 'camera' && !monitoring} onClick={start}>Start level 01 <span aria-hidden="true">↗</span></button>}
           {snapshot.complete && <button className="meditation-start" onClick={start}>Try the ritual again</button>}
           {snapshot.running && <div className="button-row"><button className="secondary-button" onClick={() => { stopAudio(); spoken.current.delete(`${snapshot.step}:${cue.id}`); setSnapshot(controller.current.pause(!snapshot.paused)) }}>{snapshot.paused ? 'Resume' : 'Pause'}</button><button className="text-button" onClick={() => { stopAudio(); spoken.current.clear(); setSnapshot(controller.current.reset()) }}>Reset level</button></div>}
@@ -116,4 +117,4 @@ export function MeditationPanel({ eye, observation, monitoring, onStartCamera, o
       </div>
     </section>
   )
-        }
+}
