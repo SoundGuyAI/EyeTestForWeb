@@ -1,0 +1,51 @@
+.meditation-demo { margin: 50px 0 36px; }
+.meditation-heading { display:grid; grid-template-columns: 1.2fr 1fr; gap:48px; align-items:end; margin-bottom:32px; }
+.meditation-heading h1 { font-size:clamp(3rem,7vw,6rem); line-height:1.02; margin:0; }
+.meditation-heading em { color:#b5cab9; font-family:Georgia,serif; font-weight:400; }
+.meditation-intro { max-width:390px; color:#b9c8ce; line-height:1.7; margin:0 0 6px; }
+.meditation-layout { display:grid; grid-template-columns:minmax(0,1.8fr) minmax(290px,1fr); gap:24px; align-items:start; }
+.serenity-stage { background:#122323; border:1px solid #405451; border-radius:24px; overflow:hidden; }
+.scene-caption { display:flex; justify-content:space-between; gap:16px; padding:20px 22px; color:#c1d4c5; font-size:10px; letter-spacing:.09em; text-transform:uppercase; border-bottom:1px solid #304340; }
+.zen-room { position:relative; height:350px; overflow:hidden; background:linear-gradient(#203936 0%,#243a37 73%,#152824 73%,#172d28 100%); }
+.zen-window { position:absolute; width:200px;height:240px;left:calc(50% - 100px);top:25px;border-radius:110px 110px 0 0;background:linear-gradient(#a8bfa7,#decfa9);box-shadow:0 0 100px #abc9a222; }
+.zen-horizon { position:absolute;top:218px;left:10%;width:80%;height:4px;background:#d7d2ae33; }
+.zen-orbit { position:absolute;border:1px solid #d4dec122;border-radius:50%;width:340px;height:110px;left:calc(50% - 170px);top:240px; }
+.orbit-two { width:430px;left:calc(50% - 215px);top:225px;height:140px; }
+.zen-stone { position:absolute;background:linear-gradient(160deg,#99ada1,#3c5850);box-shadow:9px 15px 28px #031a1590; }
+.stone-bottom { width:148px;height:58px;border-radius:50%;left:calc(50% - 74px);top:258px; }
+.stone-middle { width:108px;height:55px;border-radius:50% 50% 43% 48%;left:calc(50% - 54px);top:215px; }
+.stone-top { width:60px;height:48px;border-radius:60% 45% 50% 40%;left:calc(50% - 30px);top:176px; }
+.inspection-slip { position:absolute; width:170px;padding:16px;background:#e1d4af;color:#263b32;font:10px/1.5 ui-monospace,monospace;box-shadow:0 12px 26px #0005; }
+.inspection-slip strong { display:block; font-size:15px;line-height:1.3;margin:12px 0; }
+.inspection-slip small { display:block;font-size:9px; }
+.slip-one { left:5%;top:42px;transform:rotate(-9deg); }
+.slip-two { right:4%;top:112px;transform:rotate(11deg); }
+.inspection-stamp { position:absolute;bottom:25px;left:20px;border:3px double #e4ac67;color:#e4ac67;padding:6px 12px;transform:rotate(-8deg);font:700 13px ui-monospace,monospace; }
+.scene-subtitle { padding:26px;min-height:234px;background:#10201e; }
+.scene-subtitle h2 { color:#e9eee4; font-size:1.65rem;line-height:1.16;margin-bottom:16px; }
+.scene-subtitle p:last-child { color:#b9cec2;line-height:1.65;font-size:15px;margin:0; }
+.cue-label { color:#d8bd82;font-size:10px;letter-spacing:.11em;text-transform:uppercase; }
+.lesson-controls { padding:24px;border:1px solid #304340;border-radius:24px;background:#101f21; }
+.lesson-mode,.manual-eye-controls { display:flex;gap:6px; }
+.lesson-mode button,.manual-eye-controls button { flex:1;min-height:48px;border:1px solid #3b544d;border-radius:10px;padding:10px 8px;background:transparent;color:#c9d8d1;cursor:pointer;font-size:12px; }
+.lesson-mode button[aria-pressed=true],.manual-eye-controls button[aria-pressed=true] { background:#cedab7;color:#183129;border-color:#cedab7; }
+.lesson-mode-copy { font-size:13px;color:#a9bfb4;line-height:1.6;margin:16px 0 22px; }
+.meditation-start { width:100%;padding:18px 20px;background:#ecdb83;color:#1e3025;border:0;border-radius:14px;font-size:19px;font-weight:750;display:flex;justify-content:space-between;cursor:pointer; }
+button:disabled { cursor:not-allowed;opacity:.5; }
+.manual-eye-controls { margin-top:18px; }
+.hold-meter { margin-top:20px; }
+.hold-meter [role=progressbar] { height:5px;background:#354b42;border-radius:4px;overflow:hidden; }
+.hold-meter [role=progressbar] span { display:block;height:100%;background:#ecdb83; }
+.hold-meter p,.lesson-signal { color:#bacdbd;font-size:12px;line-height:1.6; }
+.voice-note { margin-top:24px;padding-top:18px;border-top:1px solid #31443c;font-size:12px;line-height:1.6;color:#b1c4b8; }
+.voice-note strong { color:#e3d7a3; }
+.voice-note p { margin:8px 0 0; }
+.lesson-safety { color:#93ab9e;font-size:11px;line-height:1.6;margin:18px 0 0; }
+.app-modes { display:flex;gap:8px;margin-top:24px;flex-wrap:wrap; }
+.app-modes button { border:1px solid #3c554b;border-radius:999px;padding:12px 20px;background:none;color:#cbd8d0;cursor:pointer; }
+.app-modes button[aria-pressed=true] { background:#cdd9bc;color:#17312a; }
+.camera-section-title { margin:32px 0 16px; }
+.camera-section-title h2 { font-size:1.2rem; }
+@media(max-width:900px) { .meditation-layout { grid-template-columns:minmax(0,1.4fr) minmax(270px,1fr);gap:16px; }.meditation-heading{gap:24px}.scene-caption{flex-direction:column;gap:8px}.slip-one{left:2%;width:140px}.slip-two{right:2%;width:135px;top:160px}.inspection-slip{padding:12px}.inspection-slip strong{font-size:12px} }
+@media(max-width:700px) { .meditation-heading,.meditation-layout { grid-template-columns:1fr; }.meditation-demo{margin-top:34px}.meditation-heading h1{font-size:3.4rem}.meditation-intro{font-size:14px;max-width:none}.scene-caption{flex-direction:row;flex-wrap:wrap;padding:16px}.zen-room{height:310px}.scene-subtitle{min-height:230px;padding:22px}.lesson-controls{padding:20px}.slip-one{left:4%;top:26px;width:135px}.slip-two{top:130px;width:132px}.zen-window{top:5px}.stone-bottom{top:239px}.stone-middle{top:195px}.stone-top{top:155px}.inspection-stamp{font-size:10px;bottom:18px}.brand{font-size:13px}.prototype-badge{font-size:9px;padding:6px} }
+@media(prefers-reduced-motion:reduce) { .meditation-demo * { scroll-behavior:auto;transition:none!important;animation:none!important; } }
