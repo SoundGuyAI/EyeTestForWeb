@@ -1,3 +1,15 @@
+import maleCalPositioningPhone from './audio/cal-positioning-phone'
+import maleCalPositioningDesktop from './audio/cal-positioning-desktop'
+import maleCalOpen from './audio/cal-open'
+import maleCalBlink from './audio/cal-blink'
+import maleCalBlinkEach from './audio/cal-blink-each'
+import maleCalDone from './audio/cal-done'
+import femaleCalPositioningPhone from './audio/female/cal-positioning-phone'
+import femaleCalPositioningDesktop from './audio/female/cal-positioning-desktop'
+import femaleCalOpen from './audio/female/cal-open'
+import femaleCalBlink from './audio/female/cal-blink'
+import femaleCalBlinkEach from './audio/female/cal-blink-each'
+import femaleCalDone from './audio/female/cal-done'
 import maleClip0 from './audio/welcome'
 import maleClip1 from './audio/open'
 import maleClip2 from './audio/close'
@@ -49,3 +61,32 @@ export const narrationVoices: Record<NarrationVoice, Record<string, string>> = {
     'closed-nudge-2': maleClip9,
   },
   }
+
+export type CalibrationCueId =
+  | 'cal-positioning-phone'
+  | 'cal-positioning-desktop'
+  | 'cal-open'
+  | 'cal-blink'
+  | 'cal-blink-each'
+  | 'cal-done'
+
+// Spoken guidance for each calibration phase, in the same voices as the lesson.
+// The positioning line has platform wording: phones say "hold the phone", desktop does not.
+export const calibrationNarration: Record<NarrationVoice, Record<CalibrationCueId, string>> = {
+  female: {
+    'cal-positioning-phone': femaleCalPositioningPhone,
+    'cal-positioning-desktop': femaleCalPositioningDesktop,
+    'cal-open': femaleCalOpen,
+    'cal-blink': femaleCalBlink,
+    'cal-blink-each': femaleCalBlinkEach,
+    'cal-done': femaleCalDone,
+  },
+  male: {
+    'cal-positioning-phone': maleCalPositioningPhone,
+    'cal-positioning-desktop': maleCalPositioningDesktop,
+    'cal-open': maleCalOpen,
+    'cal-blink': maleCalBlink,
+    'cal-blink-each': maleCalBlinkEach,
+    'cal-done': maleCalDone,
+  },
+}
